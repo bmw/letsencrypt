@@ -1,0 +1,30 @@
+jobs:
+  - job: test
+    pool:
+      vmImage: windows-latest
+    strategy:
+      matrix:
+        py35:
+          PYTHON_VERSION: 3.5
+          TOXENV: py35
+        py37-cover:
+          PYTHON_VERSION: 3.7
+          TOXENV: py37-cover
+        integration-certbot:
+          PYTHON_VERSION: 3.7
+          TOXENV: integration-certbot
+          PYTEST_ADDOPTS: --numprocesses 4
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: $(PYTHON_VERSION)
+        addToPath: true
+    - script: python tools/pip_install.py -U tox coverage
+      displayName: Install dependencies
+    - script: python -m tox
+      displayName: Run tox
+    - bash: curl -s https://codecov.io/bash | bash /dev/stdin -F windows
+      condition: eq(variables['TOXENV'], 'py37-cover')
+      env:
+        CODECOV_TOKEN: $(codecov_token)
+      displayName: Publish coverage
