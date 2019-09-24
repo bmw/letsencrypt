@@ -5,6 +5,9 @@ trigger:
   # rewriting the parser in the Apache plugin.
   - apache-parser-v2
   - master
+  tags:
+    include:
+      - "*"
 pr:
   - apache-parser-v2
   - master
