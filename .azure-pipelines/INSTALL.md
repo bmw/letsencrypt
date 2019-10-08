@@ -6,7 +6,10 @@ Let's begin. All pipelines are defined in `.azure-pipelines`. Currently there ar
 
 Several templates are defined in `.azure-pipelines/templates`. These YAML files aggregate common jobs configuration that can be reused in several pipelines.
 
-Note that `CODECOV_TOKEN` secured environment variable needs to be set to allow the main pipeline to publish coverage reports to CodeCov.
+Unlike Travis, where CodeCov is working without any action required, CodeCov supports Azure Pipelines
+using the coverage-bash utility (not python-coverage for now) only if you provide the Codecov repo token
+using the `CODECOV_TOKEN` environment variable. So `CODECOV_TOKEN` needs to be set as a secured
+environment variable to allow the main pipeline to publish coverage reports to CodeCov.
 
 This INSTALL.md file explains how to configure Azure Pipelines with Certbot in order to execute the CI/CD logic defined in `.azure-pipelines` folder with it.
 During this installation step, warnings describing user access and legal comitments will be displayed like this:
@@ -57,7 +60,11 @@ _Logged to Azure DevOps, account is ready._
 
 ```
 !!! ACCESS !!!
-Azure Pipeline needs RW on code, RO on metadata, RW on checks, commit statuses, deployements, issues, pull requests.
+Azure Pipeline needs RW on code, RO on metadata, RW on checks, commit statuses, deployments, issues, pull requests.
+RW access here is required to allow update of the pipelines YAML files from Azure DevOps interface, and to
+update the status of builds and PRs on GitHub side when Azure Pipelines are triggered.
+Note however that no admin access is defined here: this means that Azure Pipelines cannot do anything with
+protected branches, like master, and cannot modify the security context around this on GitHub.
 Access can be defined for all or only selected repositories, which is nice.
 ```
 
@@ -77,36 +84,34 @@ _Done. We can move to pipelines configuration._
 - On Azure DevOps, go to your organization (eg. _certbot_) then your project (eg. _certbot_)
 - Click "Pipelines" tab
 - Click "New pipeline"
-- Where is your code? Select "GitHub"
+- Where is your code?: select "__Use the classic editor__"
 
-```
-!!! ACCESS !!!
-Here comes the big requests:
-- Admin access to webhooks and services (not the code)
-- RO access on personal data (email + profile)
-- RO + RW access to repositories (code, issue, PR, wiki, settings, webhooks, services, deploy keys, collaboration invites)
-NB: Admin is not RW. Access concerns all repositories in the GitHub organization/user
-```
+__Warning: Do not choose the GitHub option in Where is your code? section. Indeed, this option will trigger an OAuth
+grant permissions from Azure Pipelines to GitHub in order to setup a GitHub OAuth Application. The permissions asked
+then are way too large (admin level on almost everything), while the classic approach does not add any more
+permissions, and works perfectly well.__
 
-- Select the repository (eg. certbot/certbot)
-- Choose "Existing Azure Pipelines YAML file"
-- Choose branch (`master` in the dropdown menu), and path (eg. /.azure-pipelines/pr.yml in the dropdown menu), click Continue
-- Review the YAML, click Run
+- Select GitHub in "Select your repository section", choose certbot/certbot in Repository, master in default branch.
+- Click on YAML option for "Select a template"
+- Choose a name for the pipeline (eg. test-pipeline), and browse to the actual pipeline YAML definition in the
+  "YAML file path" input (eg. `.azure-pipelines/test-pipeline.yml`)
+- Click "Save & queue", choose the master branch to build the first pipeline, and click "Save and run" button.
 
 _Done. Pipeline is operational. Repeat to add more pipelines from existing YAML files in `.azure-pipelines`._
 
-- (Bonus) Go again to Pipeline, select your pipline, button "..." and choose "Rename/Move": give to the pipeline a nice name!
-
-
 ## Add a secret variable to a pipeline (like `CODECOV_TOKEN`)
 
-- On Azure DevOps, go to you organization, project, pipeline tab
-- Select the pipeline, click "Edit" button, then click "Variables" button
-- Set name (eg `codecov_token`), value, tick "Kep this value secret"
-- In YAML, use something like to consume the secret as an enviroment variable
+__NB: Following steps suppose that you already setup the YAML pipeline file to
+consume the secret variable that these steps will create as an environment variable.
+For a variable named `CODECOV_TOKEN` consuming the variable `codecov_token`,
+in the YAML file this setup would take the form of the following:
 ```
 steps:
     - script: ./do_something_that_consumes_CODECOV_TOKEN  # Eg. `codecov -F windows`
       env:
         CODECOV_TOKEN: $(codecov_token)
 ```
+
+- On Azure DevOps, go to you organization, project, pipeline tab
+- Select the pipeline, click "Edit" button, then click "Variables" button
+- Set name (eg `codecov_token`), value, tick "Keep this value secret"
