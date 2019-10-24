@@ -1,8 +1,6 @@
 # Release pipeline to build and deploy Certbot for Windows for GitHub release tags
 trigger:
-  tags:
-    include:
-      - v*
+  - '*.x'
 pr: none
 
 jobs:
