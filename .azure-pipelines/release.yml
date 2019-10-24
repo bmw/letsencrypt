@@ -1,0 +1,23 @@
+# Release pipeline to build and deploy Certbot for Windows for GitHub release tags
+trigger:
+  tags:
+    include:
+      - v*
+pr: none
+
+jobs:
+  - template: templates/tests-suite.yml
+  - template: templates/installer-tests.yml
+  - job: changelog
+    pool:
+      vmImage: vs2017-win2016
+    steps:
+      - bash: |
+          CERTBOT_VERSION="${BUILD_SOURCEBRANCH/refs\/tags\/v/}"
+          "${BUILD_REPOSITORY_LOCALPATH}\tools\extract_changelog.py" "${CERTBOT_VERSION}" >> "${BUILD_ARTIFACTSTAGINGDIRECTORY}/release_notes.md"
+        displayName: Prepare changelog
+      - task: PublishPipelineArtifact@1
+        inputs:
+          path: $(Build.ArtifactStagingDirectory)
+          artifact: changelog
+        displayName: Publish changelog
