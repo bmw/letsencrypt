@@ -33,6 +33,7 @@ jobs:
             os: windows
             python-version: 3.7
             toxenv: py37
+      fail-fast: false
     runs-on: ${{ matrix.os }}-latest
     steps:
       - name: Checkout Certbot code
