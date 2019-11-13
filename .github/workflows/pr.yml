@@ -14,26 +14,26 @@ jobs:
           - windows-py37
         include:
           - name: ubuntu-py27
-            os: ubuntu-latest
+            os: ubuntu
             python-version: 2.7
             toxenv: py27
           - name: ubuntu-py35
-            os: ubuntu-latest
+            os: ubuntu
             python-version: 3.5
             toxenv: py35
           - name: ubuntu-py37
-            os: ubuntu-latest
+            os: ubuntu
             python-version: 3.7
             toxenv: py37
           - name: windows-py35
-            os: windows-latest
+            os: windows
             python-version: 3.5
             toxenv: py35
           - name: windows-py37
-            os: windows-latest
+            os: windows
             python-version: 3.7
             toxenv: py37
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-latest
     steps:
       - name: Checkout Certbot code
         uses: actions/checkout@v1
@@ -45,11 +45,13 @@ jobs:
         run: |
           sudo apt install -y --no-install-recommends gcc libaugeas0 libssl-dev libffi-dev ca-certificates openssl nginx-light
           python tools/pip_install.py tox
+        if: matrix.os == 'linux'
       - name: Install dependencies (Windows)
         run: |
           python tools/pip_install.py tox
+        if: matrix.os == 'windows'
       - name: Run tox
         run: python -m tox
         env:
           TOXENV: ${{ matrix.toxenv }}
-          PYTEST_ADDOPTS: ${{ matrix.pytest-addopts }}
+          PYTEST_ADDOPTS: --numprocesses auto
