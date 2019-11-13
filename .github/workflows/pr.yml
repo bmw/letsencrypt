@@ -46,7 +46,7 @@ jobs:
         run: |
           sudo apt install -y --no-install-recommends gcc libaugeas0 libssl-dev libffi-dev ca-certificates openssl nginx-light
           python tools/pip_install.py tox
-        if: matrix.os == 'linux'
+        if: matrix.os == 'ubuntu'
       - name: Install dependencies (Windows)
         run: |
           python tools/pip_install.py tox
