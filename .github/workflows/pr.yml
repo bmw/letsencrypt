@@ -4,15 +4,36 @@ on: [push, pull_request]
 
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        name:
+          - ubuntu-py27
+          - ubuntu-py35
+          - ubuntu-py37
+          - windows-py35
+          - windows-py37
         include:
-          - os: ubuntu-latest
+          - name: ubuntu-py27
+            os: ubuntu-latest
             python-version: 2.7
-            toxenv: integration
-            pytest-addopts: --numprocesses 4
+            toxenv: py27
+          - name: ubuntu-py35
+            os: ubuntu-latest
+            python-version: 3.5
+            toxenv: py35
+          - name: ubuntu-py37
+            os: ubuntu-latest
+            python-version: 3.7
+            toxenv: py37
+          - name: windows-py35
+            os: windows-latest
+            python-version: 3.5
+            toxenv: py35
+          - name: windows-py37
+            os: windows-latest
+            python-version: 3.7
+            toxenv: py37
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Certbot code
         uses: actions/checkout@v1
@@ -20,11 +41,13 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+      - name: Install dependencies (Linux)
         run: |
-          sudo letsencrypt-auto-source/letsencrypt-auto -n --os-packages-only
-          sudo apt install -y --no-install-recommends nginx-light
-          python tools/pip_install.py tox codecov
+          sudo apt install -y --no-install-recommends gcc libaugeas0 libssl-dev libffi-dev ca-certificates openssl nginx-light
+          python tools/pip_install.py tox
+      - name: Install dependencies (Windows)
+        run: |
+          python tools/pip_install.py tox
       - name: Run tox
         run: python -m tox
         env:
