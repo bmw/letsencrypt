@@ -41,6 +41,7 @@ matrix:
       python: "2.7"
       env: ACME_SERVER=pebble TOXENV=integration
       <<: *not-on-master
+    - script: 'env && echo $TRAVIS_TAG'
     - stage: "Snap"
       sudo: required
       env: SNAP=true TOXENV=integration-external,apacheconftest-external-with-pebble
