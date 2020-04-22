@@ -22,6 +22,7 @@ branches:
   only:
     - master
     - /^\d+\.\d+\.x$/
+    - /^v\d+\.\d+\.\d+$/
     - /^(travis-)?test-.*$/
 
 # Jobs for the main test suite are always executed (including on PRs) except for pushes on master.
