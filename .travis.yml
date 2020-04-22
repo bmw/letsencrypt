@@ -72,44 +72,6 @@ matrix:
         # automated deploys from breaking. Remembering to do this is also
         # tracked by https://github.com/certbot/certbot/issues/7931.
         'on':
-          # Deploy on release tags or nightly runs
-          condition: -n $TRAVIS_TAG || $TRAVIS_EVENT_TYPE = cron
-        provider: snap
-        snap: certbot_*.snap
-        channel: edge
-        skip_cleanup: true
-      <<: *extended-test-suite
-    - stage: "Snap"
-      sudo: required
-      env: SNAP=true TOXENV=integration-external,apacheconftest-external-with-pebble
-      addons:
-        apt:
-          packages:
-          - nginx-light
-        snaps:
-          - name: snapcraft
-            channel: stable
-            confinement: classic
-          - name: lxd
-            channel: stable
-      git:
-        # By default, Travis clones the repo to a depth of 50 commits which can
-        # break the ability to use `git describe` to set the version of the
-        # snap. This setting removes the --depth flag from git commands solving
-        # this problem. See
-        # https://docs.travis-ci.com/user/customizing-the-build#git-clone-depth
-        # for more info.
-        depth: false
-      deploy:
-        # This section relies on credentials stored in a SNAP_TOKEN environment
-        # variable in Travis. See
-        # https://docs.travis-ci.com/user/deployment/snaps/ for more info.
-        # This credential has a maximum lifetime of 1 year and the current
-        # credential will expire on 4/22/2021. The value of SNAP_TOKEN will
-        # need to be updated to use a new credential before then to prevent
-        # automated deploys from breaking. Remembering to do this is also
-        # tracked by https://github.com/certbot/certbot/issues/7931.
-        'on':
           # Deploy on release tags or nightly runs from any branch.
           all_branches: true
           condition: -n $TRAVIS_TAG || $TRAVIS_EVENT_TYPE = cron
