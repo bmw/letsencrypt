@@ -6,12 +6,7 @@ jobs:
   test:
     strategy:
       matrix:
-        name:
-          - ubuntu-py27
-          - ubuntu-py35
-          - ubuntu-py37
-          - windows-py35
-          - windows-py37
+        os: [ubuntu, windows]
         include:
           - name: ubuntu-py27
             os: ubuntu
