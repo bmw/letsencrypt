@@ -6,16 +6,19 @@ import stat
 import unittest
 
 import configobj
-import mock
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock
 import pytz
 import six
 
 import certbot
-import certbot.tests.util as test_util
 from certbot import errors
-from certbot.compat import os
-from certbot.compat import filesystem
 from certbot._internal.storage import ALL_FOUR
+from certbot.compat import filesystem
+from certbot.compat import os
+import certbot.tests.util as test_util
 
 CERT = test_util.load_cert('cert_512.pem')
 
@@ -356,8 +359,7 @@ class RenewableCertTests(BaseRenewableCertTest):
             basename = os.path.basename(path)
             if "fullchain" in basename and basename.startswith("prev"):
                 raise ValueError
-            else:
-                real_unlink(path)
+            real_unlink(path)
 
         self._write_out_ex_kinds()
         with mock.patch("certbot._internal.storage.os.unlink") as mock_unlink:
@@ -372,8 +374,7 @@ class RenewableCertTests(BaseRenewableCertTest):
             # pylint: disable=missing-docstring
             if "fullchain" in os.path.basename(path):
                 raise ValueError
-            else:
-                real_unlink(path)
+            real_unlink(path)
 
         self._write_out_ex_kinds()
         with mock.patch("certbot._internal.storage.os.unlink") as mock_unlink:
@@ -403,20 +404,6 @@ class RenewableCertTests(BaseRenewableCertTest):
 
         self.assertEqual(self.test_rc.names(),
                          ["example.com", "www.example.com"])
-
-        # Trying a non-current version
-        self._write_out_kind("cert", 15, test_util.load_vector("cert_512.pem"))
-
-        self.assertEqual(self.test_rc.names(12),
-                         ["example.com", "www.example.com"])
-
-        # Testing common name is listed first
-        self._write_out_kind(
-            "cert", 12, test_util.load_vector("cert-5sans_512.pem"))
-
-        self.assertEqual(
-            self.test_rc.names(12),
-            ["example.com"] + ["{0}.example.com".format(c) for c in "abcd"])
 
         # Trying missing cert
         os.unlink(self.test_rc.cert)
@@ -688,10 +675,35 @@ class RenewableCertTests(BaseRenewableCertTest):
             errors.CertStorageError,
             self.test_rc._update_link_to, "elephant", 17)
 
-    def test_ocsp_revoked(self):
-        # XXX: This is currently hardcoded to False due to a lack of an
-        #      OCSP server to test against.
-        self.assertFalse(self.test_rc.ocsp_revoked())
+    @mock.patch("certbot.ocsp.RevocationChecker.ocsp_revoked_by_paths")
+    def test_ocsp_revoked(self, mock_checker):
+        # Write out test files
+        for kind in ALL_FOUR:
+            self._write_out_kind(kind, 1)
+        version = self.test_rc.latest_common_version()
+        expected_cert_path = self.test_rc.version("cert", version)
+        expected_chain_path = self.test_rc.version("chain", version)
+
+        # Test with cert revoked
+        mock_checker.return_value = True
+        self.assertTrue(self.test_rc.ocsp_revoked(version))
+        self.assertEqual(mock_checker.call_args[0][0], expected_cert_path)
+        self.assertEqual(mock_checker.call_args[0][1], expected_chain_path)
+
+        # Test with cert not revoked
+        mock_checker.return_value = False
+        self.assertFalse(self.test_rc.ocsp_revoked(version))
+        self.assertEqual(mock_checker.call_args[0][0], expected_cert_path)
+        self.assertEqual(mock_checker.call_args[0][1], expected_chain_path)
+
+        # Test with error
+        mock_checker.side_effect = ValueError
+        with mock.patch("certbot._internal.storage.logger.warning") as logger:
+            self.assertFalse(self.test_rc.ocsp_revoked(version))
+        self.assertEqual(mock_checker.call_args[0][0], expected_cert_path)
+        self.assertEqual(mock_checker.call_args[0][1], expected_chain_path)
+        log_msg = logger.call_args[0][0]
+        self.assertIn("An error occurred determining the OCSP status", log_msg)
 
     def test_add_time_interval(self):
         from certbot._internal import storage

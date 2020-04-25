@@ -5,15 +5,16 @@ import sys
 import time
 import unittest
 
-import mock
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock
 import six
 
 from acme import messages
-from acme.magic_typing import Optional  # pylint: disable=unused-import, no-name-in-module
-
-from certbot._internal import constants
 from certbot import errors
 from certbot import util
+from certbot._internal import constants
 from certbot.compat import filesystem
 from certbot.compat import os
 from certbot.tests import util as test_util

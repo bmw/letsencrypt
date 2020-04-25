@@ -2,21 +2,25 @@
 from __future__ import print_function
 
 import os
+from os.path import exists
+from os.path import join
 import re
 import shutil
 import subprocess
 import time
-from os.path import join, exists
 
 import pytest
+
 from certbot_integration_tests.certbot_tests import context as certbot_context
-from certbot_integration_tests.certbot_tests.assertions import (
-    assert_hook_execution, assert_saved_renew_hook,
-    assert_cert_count_for_lineage,
-    assert_world_no_permissions, assert_world_read_permissions,
-    assert_equals_group_owner, assert_equals_group_permissions, assert_equals_world_read_permissions,
-    EVERYBODY_SID
-)
+from certbot_integration_tests.certbot_tests.assertions import assert_cert_count_for_lineage
+from certbot_integration_tests.certbot_tests.assertions import assert_equals_group_owner
+from certbot_integration_tests.certbot_tests.assertions import assert_equals_group_permissions
+from certbot_integration_tests.certbot_tests.assertions import assert_equals_world_read_permissions
+from certbot_integration_tests.certbot_tests.assertions import assert_hook_execution
+from certbot_integration_tests.certbot_tests.assertions import assert_saved_renew_hook
+from certbot_integration_tests.certbot_tests.assertions import assert_world_no_permissions
+from certbot_integration_tests.certbot_tests.assertions import assert_world_read_permissions
+from certbot_integration_tests.certbot_tests.assertions import EVERYBODY_SID
 from certbot_integration_tests.utils import misc
 
 
@@ -589,6 +593,23 @@ def test_ocsp_status_live(context):
 
     assert output.count('INVALID') == 1, 'Expected {0} to be INVALID'.format(cert)
     assert output.count('REVOKED') == 1, 'Expected {0} to be REVOKED'.format(cert)
+
+
+def test_ocsp_renew(context):
+    """Test that revoked certificates are renewed."""
+    # Obtain a certificate
+    certname = context.get_domain('ocsp-renew')
+    context.certbot(['--domains', certname])
+
+    # Test that "certbot renew" does not renew the certificate
+    assert_cert_count_for_lineage(context.config_dir, certname, 1)
+    context.certbot(['renew'], force_renew=False)
+    assert_cert_count_for_lineage(context.config_dir, certname, 1)
+
+    # Revoke the certificate and test that it does renew the certificate
+    context.certbot(['revoke', '--cert-name', certname, '--no-delete-after-revoke'])
+    context.certbot(['renew'], force_renew=False)
+    assert_cert_count_for_lineage(context.config_dir, certname, 2)
 
 
 def test_dry_run_deactivate_authzs(context):

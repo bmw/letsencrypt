@@ -4,14 +4,17 @@ import errno
 import sys
 import unittest
 
-import mock
+try:
+    import mock
+except ImportError: # pragma: no cover
+    from unittest import mock
 import six
 from six.moves import reload_module  # pylint: disable=import-error
 
-import certbot.tests.util as test_util
 from certbot import errors
-from certbot.compat import os
 from certbot.compat import filesystem
+from certbot.compat import os
+import certbot.tests.util as test_util
 
 
 class RunScriptTest(unittest.TestCase):
@@ -579,7 +582,7 @@ class AtexitRegisterTest(unittest.TestCase):
             with mock.patch('certbot.util.atexit') as mock_atexit:
                 self._call(self.func, *self.args, **self.kwargs)
 
-            # _INITAL_PID must be mocked when calling atexit_func
+            # _INITIAL_PID must be mocked when calling atexit_func
             self.assertTrue(mock_atexit.register.called)
             args, kwargs = mock_atexit.register.call_args
             atexit_func = args[0]
