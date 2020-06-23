@@ -48,9 +48,9 @@ jobs:
       - name: Set numprocesses
         run: |
           if [[ "$TOXENV" == *"py2"* ]]; then
-              echo "::set-env name=PYTEST_ADDOPTS::4"
+              echo "::set-env name=PYTEST_ADDOPTS::--numprocesses 4"
           else
-              echo "::set-env name=PYTEST_ADDOPTS::auto"
+              echo "::set-env name=PYTEST_ADDOPTS::--numprocesses auto"
           fi
         env:
           TOXENV: ${{ matrix.toxenv }}
