@@ -45,8 +45,15 @@ jobs:
         run: |
           python tools/pip_install.py tox
         if: matrix.os == 'windows'
+      - name: Set numprocesses
+        run: |
+          if [[ "$TOXENV == *"py2"* ]]; then
+              echo "::set-env name=PYTEST_ADDOPTS::4"
+          else
+              echo "::set-env name=PYTEST_ADDOPTS::auto"
+        env:
+          TOXENV: ${{ matrix.toxenv }}
       - name: Run tox
         run: python -m tox
         env:
           TOXENV: ${{ matrix.toxenv }}
-          PYTEST_ADDOPTS: --numprocesses auto
