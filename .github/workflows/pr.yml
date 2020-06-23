@@ -53,6 +53,7 @@ jobs:
               echo "::set-env name=PYTEST_ADDOPTS::auto"
         env:
           TOXENV: ${{ matrix.toxenv }}
+        shell: bash
       - name: Run tox
         run: python -m tox
         env:
