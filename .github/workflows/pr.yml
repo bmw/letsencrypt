@@ -51,6 +51,7 @@ jobs:
               echo "::set-env name=PYTEST_ADDOPTS::4"
           else
               echo "::set-env name=PYTEST_ADDOPTS::auto"
+          fi
         env:
           TOXENV: ${{ matrix.toxenv }}
         shell: bash
