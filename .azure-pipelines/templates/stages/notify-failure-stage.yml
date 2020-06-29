@@ -2,8 +2,6 @@ stages:
   - stage: On_Failure
     jobs:
       - job: notify_mattermost
-        variables:
-          - group: certbot-common
         pool:
           vmImage: ubuntu-latest
         steps:
