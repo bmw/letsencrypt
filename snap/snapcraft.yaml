@@ -1,4 +1,4 @@
-name: certbot
+name: bmw-certbot-test
 summary: Automatically configure HTTPS using Let's Encrypt
 description: |
  The objective of Certbot, Let's Encrypt, and the ACME (Automated
@@ -13,8 +13,6 @@ description: |
    - Obtain a browser-trusted certificate and set it up on your web server
    - Keep track of when your certificate is going to expire, and renew it
    - Help you revoke the certificate if that ever becomes necessary.
-confinement: classic
-grade: devel
 base: core20
 adopt-info: certbot
 
