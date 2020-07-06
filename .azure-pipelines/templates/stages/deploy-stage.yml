@@ -19,8 +19,6 @@ stages:
               ARCH: armhf
         pool:
           vmImage: ubuntu-18.04
-        variables:
-          - group: certbot-common
         steps:
           - bash: |
               sudo apt-get update
