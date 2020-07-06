@@ -20,24 +20,3 @@ jobs:
           path: $(Build.ArtifactStagingDirectory)
           artifact: snap-$(arch)
         displayName: Store snap artifact
-  - job: snap_run
-    dependsOn: snap_build
-    pool:
-      vmImage: ubuntu-18.04
-    steps:
-      - script: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends nginx-light snapd
-          python tools/pip_install.py -U tox
-        displayName: Install dependencies
-      - task: DownloadPipelineArtifact@2
-        inputs:
-          artifact: snap-amd64
-          path: $(Build.SourcesDirectory)/snap
-        displayName: Retrieve Certbot snap
-      - script: |
-          sudo snap install --dangerous --classic snap/*.snap
-        displayName: Install Certbot snap
-      - script: |
-          python -m tox -e integration-external,apacheconftest-external-with-pebble
-        displayName: Run tox
