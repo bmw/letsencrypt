@@ -63,10 +63,6 @@ jobs:
       vmImage: ubuntu-18.04
     timeoutInMinutes: 0
     variables:
-      # Do not run the heavy non-amd64 builds for test branches
-      ${{ if not(startsWith(variables['Build.SourceBranchName'], 'test-')) }}:
-        ARCHS: amd64 arm64 armhf
-      ${{ if startsWith(variables['Build.SourceBranchName'], 'test-') }}:
         ARCHS: amd64
     steps:
       - script: |
@@ -87,7 +83,7 @@ jobs:
           git config --global user.name "$(Build.RequestedFor)"
           mkdir -p ~/.local/share/snapcraft/provider/launchpad
           cp $(credentials.secureFilePath) ~/.local/share/snapcraft/provider/launchpad/credentials
-          python3 tools/snap/build_remote.py ALL --archs ${ARCHS}
+          python3 tools/snap/build_remote.py certbot --archs ${ARCHS}
         displayName: Build snaps
       - script: |
           mv *.snap $(Build.ArtifactStagingDirectory)
@@ -119,28 +115,3 @@ jobs:
       - script: |
           python -m tox -e integration-external,apacheconftest-external-with-pebble
         displayName: Run tox
-  - job: snap_dns_run
-    dependsOn: snaps_build
-    pool:
-      vmImage: ubuntu-18.04
-    steps:
-      - script: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends snapd
-        displayName: Install dependencies
-      - task: UsePythonVersion@0
-        inputs:
-          versionSpec: 3.8
-          addToPath: true
-      - task: DownloadPipelineArtifact@2
-        inputs:
-          artifact: snaps
-          path: $(Build.SourcesDirectory)/snap
-        displayName: Retrieve Certbot snaps
-      - script: |
-          python3 -m venv venv
-          venv/bin/python tools/pip_install.py -e certbot-ci
-        displayName: Prepare Certbot-CI
-      - script: |
-          sudo -E venv/bin/pytest certbot-ci/snap_integration_tests/dns_tests --allow-persistent-changes --snap-folder $(Build.SourcesDirectory)/snap --snap-arch amd64
-        displayName: Test DNS plugins snaps
