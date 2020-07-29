@@ -1,6 +1,10 @@
 # Our full pipeline running all of our tests and deploying artifacts when
 # appropriate.
 trigger:
+  # This prevents the problems described in
+  # https://github.com/certbot/certbot/issues/8139.
+  batch: true
+
   branches:
     include:
       - '*.x'
@@ -19,21 +23,17 @@ schedules:
       - master
     always: true
 
-# This prevents the problems described in
-# https://github.com/certbot/certbot/issues/8139.
-batch: true
-
 variables:
-  isTestBranch: ${{ startsWith(variables.Build.SourceBranchName, 'test-') }}
-  onTag: ${{ if startsWith(variables.Build.SourceBranch, 'refs/tags') }}
+  isTestBranch: ${{ startsWith(variables['Build.SourceBranchName'], 'test-') }}
+  onTag: ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags') }}
 
 stages:
   - template: templates/stages/test-and-package-stage.yml
   # Only create a stripped down changelog on tags.
-  - ${{ if eq(variables.onTag, 'true') }}
+  - ${{ if eq(variables.onTag, 'true') }}:
     - template: templates/stages/changelog-stage.yml
   # Only deploy builds on tags or nightly builds.
-  - ${{ if or(eq(variables.onTag, 'true'), eq(variables.Build.Reason, 'Schedule') }}
+  - ${{ if or(eq(variables.onTag, 'true'), eq(variables['Build.Reason'], 'Schedule') }}:
     - template: templates/stages/deploy-stage.yml
   # Don't send Mattermost messages about failures on test- branches.
   - ${{ if eq(variables.isTestBranch, 'false') }}:
