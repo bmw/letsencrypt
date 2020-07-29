@@ -28,7 +28,6 @@ jobs:
         displayName: Build snaps
       - script: |
           mv *.snap $(Build.ArtifactStagingDirectory)
-          mv certbot-dns-*/*.snap $(Build.ArtifactStagingDirectory)
         displayName: Prepare artifacts
       - task: PublishPipelineArtifact@1
         inputs:
