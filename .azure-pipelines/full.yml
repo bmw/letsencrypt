@@ -24,8 +24,8 @@ schedules:
     always: true
 
 variables:
-  isTestBranch: ${{ startsWith(variables.Build.SourceBranchName, 'test-') }}
-  onTag: ${{ startsWith(variables.Build.SourceBranch, 'refs/tags') }}
+  isTestBranch: ${{ startsWith(variables['Build.SourceBranchName'], 'test-') }}
+  onTag: ${{ startsWith(variables['Build.SourceBranch'], 'refs/tags') }}
 
 stages:
   - template: templates/stages/test-and-package-stage.yml
@@ -33,10 +33,9 @@ stages:
   - ${{ if eq(variables.onTag, 'true') }}:
     - template: templates/stages/changelog-stage.yml
   # Only deploy builds on tags or nightly builds.
-  - ${{ if or(eq(variables.onTag, 'true'), eq(variables.Build.Reason, 'Schedule')) }}:
+  - ${{ if or(eq(variables.onTag, 'true'), eq(variables['Build.Reason'], 'Schedule')) }}:
     - template: templates/stages/deploy-stage.yml
   # Don't send Mattermost messages about failures on test- branches or builds
   # triggered through the web UI.
-  #- ${{ if not(or(eq(variables.isTestBranch, 'true'), eq(variables.Build.Reason, 'Manual'))) }}:
-  - ${{ if not(eq(variables['Build.Reason'], 'Manual')) }}:
+  - ${{ if not(or(eq(variables.isTestBranch, 'true'), eq(variables['Build.Reason'], 'Manual'))) }}:
     - template: templates/stages/notify-failure-stage.yml
