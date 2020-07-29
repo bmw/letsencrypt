@@ -3,7 +3,6 @@ jobs:
     variables:
       - name: IMAGE_NAME
         value: ubuntu-18.04
-      - group: certbot-common
     strategy:
       matrix:
         linux-py36:
@@ -78,18 +77,6 @@ jobs:
           TOXENV: le_auto_oraclelinux6
         docker-dev:
           TOXENV: docker_dev
-        farmtest-apache2:
-          PYTHON_VERSION: 3.7
-          TOXENV: test-farm-apache2
-        farmtest-leauto-upgrades:
-          PYTHON_VERSION: 3.7
-          TOXENV: test-farm-leauto-upgrades
-        farmtest-certonly-standalone:
-          PYTHON_VERSION: 3.7
-          TOXENV: test-farm-certonly-standalone
-        farmtest-sdists:
-          PYTHON_VERSION: 3.7
-          TOXENV: test-farm-sdists
     pool:
       vmImage: $(IMAGE_NAME)
     steps:
