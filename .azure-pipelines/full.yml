@@ -37,5 +37,5 @@ stages:
     - template: templates/stages/deploy-stage.yml
   # Don't send Mattermost messages about failures on test- branches or builds
   # triggered through the web UI.
-  - ${{ if or(eq(variables.isTestBranch, 'false'), eq(variables.Build.Reason, 'Manual')) }}:
+  - ${{ if not(or(eq(variables.isTestBranch, 'true'), eq(variables.Build.Reason, 'Manual'))) }}:
     - template: templates/stages/notify-failure-stage.yml
