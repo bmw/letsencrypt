@@ -35,7 +35,7 @@ stages:
   # Only deploy builds on tags or nightly builds.
   - ${{ if or(eq(variables.onTag, 'true'), eq(variables.Build.Reason, 'Schedule')) }}:
     - template: templates/stages/deploy-stage.yml
-  # Don't send Mattermost messages about failures on test- branches.
-  - ${{ if eq(variables.isTestBranch, 'false') }}:
+  # Don't send Mattermost messages about failures on test- branches or builds
+  # triggered through the web UI.
+  - ${{ if or(eq(variables.isTestBranch, 'false'), eq(variables.Build.Reason, 'Manual')) }}:
     - template: templates/stages/notify-failure-stage.yml
-
