@@ -17,7 +17,7 @@ trigger:
 pr: none
 schedules:
   # CHANGE ME BACK
-  - cron: "55 * * * *"
+  - cron: "*/5 * * * *"
     displayName: Nightly build
     branches:
       include:
