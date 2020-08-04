@@ -12,7 +12,7 @@ export DEFAULT_ARCH=amd64
 # using a different account on Docker Hub, you can change this value to have
 # the scripts modify those Docker repositories rather than the repositories for
 # the official Certbot Docker images.
-export DOCKER_HUB_ORG="certbot"
+export DOCKER_HUB_ORG="certbottest"
 
 # List of Certbot plugins
 export CERTBOT_PLUGINS=(
