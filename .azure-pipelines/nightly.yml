@@ -10,6 +10,4 @@ schedules:
     always: true
 
 stages:
-  - template: templates/stages/test-and-package-stage.yml
   - template: templates/stages/deploy-stage.yml
-  - template: templates/stages/notify-failure-stage.yml
