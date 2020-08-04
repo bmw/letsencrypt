@@ -7,10 +7,7 @@ trigger:
 pr: none
 
 stages:
-  - template: templates/stages/test-and-package-stage.yml
-  - template: templates/stages/changelog-stage.yml
   - template: templates/stages/deploy-stage.yml
     parameters:
       snapReleaseChannel: beta
       dockerTag: ${{variables['Build.SourceBranchName']}}
-  - template: templates/stages/notify-failure-stage.yml
