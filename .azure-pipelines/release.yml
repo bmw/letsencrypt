@@ -7,7 +7,6 @@ trigger:
 pr: none
 
 stages:
-  - template: templates/stages/test-and-package-stage.yml
   - template: templates/stages/deploy-stage.yml
     parameters:
       snapReleaseChannel: beta
