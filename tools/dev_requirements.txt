@@ -48,7 +48,7 @@ ipython-genutils==0.2.0
 isodate==0.6.0
 isort==4.3.21
 jedi==0.17.1
-Jinja2==2.9.6
+Jinja2==2.10.1
 jmespath==0.9.4
 josepy==1.1.0
 jsonpickle==2.0.0
