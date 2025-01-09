@@ -8,4 +8,4 @@ jobs:
   always_run:
     runs-on: ubuntu-latest
     steps:
-    - run: echo pretend i do something useful with the secret
+    - run: echo give me the secret ${{ secrets.MY_SECRET }}
