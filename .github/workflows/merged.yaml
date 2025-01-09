@@ -2,13 +2,10 @@ name: Merge Event
 
 on:
   pull_request_target:
-    types:
-      - closed
   workflow_dispatch:
 
 jobs:
-  if_merged:
-    if: github.event.pull_request.merged == true
+  always_run:
     runs-on: ubuntu-latest
     steps:
-    - run: echo my password is ${{ secrets.MY_SECRET }}
+    - run: echo pretend i do something useful with the secret
