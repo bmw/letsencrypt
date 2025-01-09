@@ -1,11 +1,12 @@
 """Crypto utilities."""
 import binascii
 import contextlib
+import enum
 import ipaddress
 import logging
 import os
-import re
 import socket
+import typing
 from typing import Any
 from typing import Callable
 from typing import List
@@ -35,6 +36,24 @@ logger = logging.getLogger(__name__)
 # should be changed to use "set_options" to disable SSLv2 and SSLv3,
 # in case it's used for things other than probing/serving!
 _DEFAULT_SSL_METHOD = SSL.SSLv23_METHOD
+
+
+class Format(enum.IntEnum):
+    """File format to be used when parsing or serializing X.509 structures.
+
+    Backwards compatible with the `FILETYPE_ASN1` and `FILETYPE_PEM` constants
+    from pyOpenSSL.
+    """
+    DER = crypto.FILETYPE_ASN1
+    PEM = crypto.FILETYPE_PEM
+
+    def to_cryptography_encoding(self) -> serialization.Encoding:
+        """Converts the Format to the corresponding cryptography `Encoding`.
+        """
+        if self == Format.DER:
+            return serialization.Encoding.DER
+        else:
+            return serialization.Encoding.PEM
 
 
 class _DefaultCertSelection:
@@ -76,13 +95,9 @@ class SSLSocket:  # pylint: disable=too-few-public-methods
             raise ValueError("Neither cert_selection or certs specified.")
         if cert_selection and certs:
             raise ValueError("Both cert_selection and certs specified.")
-        actual_cert_selection: Union[_DefaultCertSelection,
-                                     Optional[Callable[[SSL.Connection],
-                                                       Optional[Tuple[crypto.PKey,
-                                                                crypto.X509]]]]] = cert_selection
-        if actual_cert_selection is None:
-            actual_cert_selection = _DefaultCertSelection(certs if certs else {})
-        self.cert_selection = actual_cert_selection
+        if cert_selection is None:
+            cert_selection = _DefaultCertSelection(certs if certs else {})
+        self.cert_selection = cert_selection
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.sock, name)
@@ -233,14 +248,18 @@ def make_csr(
 ) -> bytes:
     """Generate a CSR containing domains or IPs as subjectAltNames.
 
+    Parameters are ordered this way for backwards compatibility when called using positional
+    arguments.
+
     :param buffer private_key_pem: Private key, in PEM PKCS#8 format.
     :param list domains: List of DNS names to include in subjectAltNames of CSR.
     :param bool must_staple: Whether to include the TLS Feature extension (aka
         OCSP Must Staple: https://tools.ietf.org/html/rfc7633).
     :param list ipaddrs: List of IPaddress(type ipaddress.IPv4Address or ipaddress.IPv6Address)
-    names to include in subbjectAltNames of CSR.
-    params ordered this way for backward competablity when called by positional argument.
+        names to include in subbjectAltNames of CSR.
+
     :returns: buffer PEM-encoded Certificate Signing Request.
+
     """
     private_key = serialization.load_pem_private_key(private_key_pem, password=None)
     # There are a few things that aren't valid for x509 signing. mypy
@@ -288,21 +307,50 @@ def make_csr(
     return csr.public_bytes(serialization.Encoding.PEM)
 
 
+def get_names_from_subject_and_extensions(
+    subject: x509.Name, exts: x509.Extensions
+) -> List[str]:
+    """Gets all DNS SAN names as well as the first Common Name from subject.
+
+    :param subject: Name of the x509 object, which may include Common Name
+    :type subject: `cryptography.x509.Name`
+    :param exts: Extensions of the x509 object, which may include SANs
+    :type exts: `cryptography.x509.Extensions`
+
+    :returns: List of DNS Subject Alternative Names and first Common Name
+    :rtype: `list` of `str`
+    """
+    # We know these are always `str` because `bytes` is only possible for
+    # other OIDs.
+    cns = [
+        typing.cast(str, c.value)
+        for c in subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)
+    ]
+    try:
+        san_ext = exts.get_extension_for_class(x509.SubjectAlternativeName)
+    except x509.ExtensionNotFound:
+        dns_names = []
+    else:
+        dns_names = san_ext.value.get_values_for_type(x509.DNSName)
+
+    if not cns:
+        return dns_names
+    else:
+        # We only include the first CN, if there are multiple. This matches
+        # the behavior of the previously implementation using pyOpenSSL.
+        return [cns[0]] + [d for d in dns_names if d != cns[0]]
+
+
 def _pyopenssl_cert_or_req_all_names(loaded_cert_or_req: Union[crypto.X509, crypto.X509Req]
                                      ) -> List[str]:
-    # unlike its name this only outputs DNS names, other type of idents will ignored
-    common_name = loaded_cert_or_req.get_subject().CN
-    sans = _pyopenssl_cert_or_req_san(loaded_cert_or_req)
-
-    if common_name is None:
-        return sans
-    return [common_name] + [d for d in sans if d != common_name]
+    cert_or_req = loaded_cert_or_req.to_cryptography()
+    return get_names_from_subject_and_extensions(
+        cert_or_req.subject, cert_or_req.extensions
+    )
 
 
 def _pyopenssl_cert_or_req_san(cert_or_req: Union[crypto.X509, crypto.X509Req]) -> List[str]:
     """Get Subject Alternative Names from certificate or CSR using pyOpenSSL.
-
-    .. todo:: Implement directly in PyOpenSSL!
 
     .. note:: Although this is `acme` internal API, it is used by
         `letsencrypt`.
@@ -314,67 +362,13 @@ def _pyopenssl_cert_or_req_san(cert_or_req: Union[crypto.X509, crypto.X509Req]) 
     :rtype: `list` of `str`
 
     """
-    # This function finds SANs with dns name
+    exts = cert_or_req.to_cryptography().extensions
+    try:
+        san_ext = exts.get_extension_for_class(x509.SubjectAlternativeName)
+    except x509.ExtensionNotFound:
+        return []
 
-    # constants based on PyOpenSSL certificate/CSR text dump
-    part_separator = ":"
-    prefix = "DNS" + part_separator
-
-    sans_parts = _pyopenssl_extract_san_list_raw(cert_or_req)
-
-    return [part.split(part_separator)[1]
-            for part in sans_parts if part.startswith(prefix)]
-
-
-def _pyopenssl_cert_or_req_san_ip(cert_or_req: Union[crypto.X509, crypto.X509Req]) -> List[str]:
-    """Get Subject Alternative Names IPs from certificate or CSR using pyOpenSSL.
-
-    :param cert_or_req: Certificate or CSR.
-    :type cert_or_req: `OpenSSL.crypto.X509` or `OpenSSL.crypto.X509Req`.
-
-    :returns: A list of Subject Alternative Names that are IP Addresses.
-    :rtype: `list` of `str`. note that this returns as string, not IPaddress object
-
-    """
-
-    # constants based on PyOpenSSL certificate/CSR text dump
-    part_separator = ":"
-    prefix = "IP Address" + part_separator
-
-    sans_parts = _pyopenssl_extract_san_list_raw(cert_or_req)
-
-    return [part[len(prefix):] for part in sans_parts if part.startswith(prefix)]
-
-
-def _pyopenssl_extract_san_list_raw(cert_or_req: Union[crypto.X509, crypto.X509Req]) -> List[str]:
-    """Get raw SAN string from cert or csr, parse it as UTF-8 and return.
-
-    :param cert_or_req: Certificate or CSR.
-    :type cert_or_req: `OpenSSL.crypto.X509` or `OpenSSL.crypto.X509Req`.
-
-    :returns: raw san strings, parsed byte as utf-8
-    :rtype: `list` of `str`
-
-    """
-    # This function finds SANs by dumping the certificate/CSR to text and
-    # searching for "X509v3 Subject Alternative Name" in the text. This method
-    # is used to because in PyOpenSSL version <0.17 `_subjectAltNameString` methods are
-    # not able to Parse IP Addresses in subjectAltName string.
-
-    if isinstance(cert_or_req, crypto.X509):
-        # pylint: disable=line-too-long
-        text = crypto.dump_certificate(crypto.FILETYPE_TEXT, cert_or_req).decode('utf-8')
-    else:
-        text = crypto.dump_certificate_request(crypto.FILETYPE_TEXT, cert_or_req).decode('utf-8')
-    # WARNING: this function does not support multiple SANs extensions.
-    # Multiple X509v3 extensions of the same type is disallowed by RFC 5280.
-    raw_san = re.search(r"X509v3 Subject Alternative Name:(?: critical)?\s*(.*)", text)
-
-    parts_separator = ", "
-    # WARNING: this function assumes that no SAN can include
-    # parts_separator, hence the split!
-    sans_parts = [] if raw_san is None else raw_san.group(1).split(parts_separator)
-    return sans_parts
+    return san_ext.value.get_values_for_type(x509.DNSName)
 
 
 def gen_ss_cert(key: crypto.PKey, domains: Optional[List[str]] = None,
@@ -444,7 +438,7 @@ def gen_ss_cert(key: crypto.PKey, domains: Optional[List[str]] = None,
 
 
 def dump_pyopenssl_chain(chain: Union[List[jose.ComparableX509], List[crypto.X509]],
-                         filetype: int = crypto.FILETYPE_PEM) -> bytes:
+                         filetype: Union[Format, int] = Format.PEM) -> bytes:
     """Dump certificate chain into a bundle.
 
     :param list chain: List of `OpenSSL.crypto.X509` (or wrapped in
@@ -457,12 +451,14 @@ def dump_pyopenssl_chain(chain: Union[List[jose.ComparableX509], List[crypto.X50
     # XXX: returns empty string when no chain is available, which
     # shuts up RenewableCert, but might not be the best solution...
 
+    filetype = Format(filetype)
     def _dump_cert(cert: Union[jose.ComparableX509, crypto.X509]) -> bytes:
         if isinstance(cert, jose.ComparableX509):
             if isinstance(cert.wrapped, crypto.X509Req):
                 raise errors.Error("Unexpected CSR provided.")  # pragma: no cover
             cert = cert.wrapped
-        return crypto.dump_certificate(filetype, cert)
+
+        return cert.to_cryptography().public_bytes(filetype.to_cryptography_encoding())
 
     # assumes that OpenSSL.crypto.dump_certificate includes ending
     # newline character
