@@ -22,7 +22,6 @@ jobs:
     - uses: mattermost/action-mattermost-notify@b7d118e440bf2749cd18a4a8c88e7092e696257a
       with:
         MATTERMOST_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK_URL }}
-        MATTERMOST_CHANNEL: private-certbot
         TEXT: |
           ## Updates In the Past Week
           - Most commented in the last week: [link](${{ env.UPDATED_URL }})
